@@ -3,9 +3,14 @@
 
 void* my_memcpy(void* dest, const void* src, size_t n)
 {
-	if (!src || !n)
+	if (!dest || !src)
 	{
 		return NULL;
+	}
+
+	if (n == 0)
+	{
+		return dest;
 	}
 
 	uint8_t* pSrc = (uint8_t*)src;
@@ -21,42 +26,39 @@ void* my_memcpy(void* dest, const void* src, size_t n)
 
 void* my_memmove(void* dest, const void* src, size_t n)
 {
-	if (!src || !n)
+	if (!dest || !src)
 	{
 		return NULL;
 	}
 
-	if (dest == src)
+	if (n == 0 || dest == src)
 	{
-		return dest;	// nothing to move
+		return dest;
 	}
 
 	uint8_t* pSrc = (uint8_t*)src;
 	uint8_t* pDst = (uint8_t*)dest;
 
-	// check for overlap
-	if ((pSrc + n - 1) < pDst)
+	if (pDst < pSrc)
 	{
-		// no overlap, can use memcpy
-		return my_memcpy(dest, src, n);
+		for (size_t i = 0; i < n; i++)
+		{
+			pDst[i] = pSrc[i];
+		}
 	}
 	else
 	{
-		// overlapping regions
-		pSrc += n;
-		pDst += n;
+		pSrc += n - 1;
+		pDst += n - 1;
 
 		for (size_t i = 0; i < n; i++)
 		{
-			*pDst = *pSrc;
-			pSrc--;
-			pDst--;
+			*pDst-- = *pSrc--;
 		}
-
-		return dest;
 	}
-}
 
+	return dest;
+}
 
 int main()
 {
@@ -82,6 +84,28 @@ int main()
 
 	// memmove will work correctly
 	my_memmove(buffer + 2, buffer, 10);
+
+	printf("After:  %s\n", buffer);
+
+	// another overlap case
+	sprintf_s(buffer, sizeof(buffer), "%s", pattern);
+
+	printf("== testing my_memmove() ==\n");
+
+	printf("Before: %s\n", buffer);
+
+	my_memmove(buffer, buffer + 2, 10);
+
+	printf("After:  %s\n", buffer);
+
+	// test identical pointers
+	sprintf_s(buffer, sizeof(buffer), "%s", pattern);
+
+	printf("== testing my_memmove() ==\n");
+
+	printf("Before: %s\n", buffer);
+
+	my_memmove(buffer + 5, buffer + 5, 5);
 
 	printf("After:  %s\n", buffer);
 
