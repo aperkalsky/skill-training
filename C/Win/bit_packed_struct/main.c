@@ -24,8 +24,6 @@ uint32_t that keeps device configuration
 #define CONFIG_MODE_MASK 0x0F
 #define CONFIG_MODE_SHIFT 20
 
-static const uint8_t flag_mask[4] = {0x10, 0x20, 0x40, 0x80};
-
 uint32_t config_set_mode(uint32_t config, uint8_t mode)
 {
 	uint32_t new_mode_val = (uint32_t)(mode & CONFIG_MODE_MASK) << CONFIG_MODE_SHIFT;
@@ -59,41 +57,22 @@ uint8_t  config_get_timeout(uint32_t config)
 // set flag 0..3
 uint32_t config_set_flag(uint32_t config, uint8_t flag_index)
 {
-	uint32_t masked_value = (uint32_t)(config & flag_mask[flag_index]);
-
-	if(masked_value)
-	{
-		// flag is already set
-		return config;
-	}
-	else
-	{
-		// need to set this flag
-		return config | masked_value;
-	}
+	// TODO: add flag index boundaries checking
+	return config | (1u << (CONFIG_FLAGS_SHIFT + flag_index));
 }
 
-// clear flag 0..3
+// set flag 0..3
 uint32_t config_clear_flag(uint32_t config, uint8_t flag_index)
 {
-	uint32_t masked_value = (uint32_t)(config & flag_mask[flag_index]);
-
-	if (masked_value)
-	{
-		// need to clear
-		return config & ~masked_value;
-	}
-	else
-	{
-		// is already clear
-		return config;
-	}
+	// TODO: add flag index boundaries checking
+	return config & ~(1u << (CONFIG_FLAGS_SHIFT + flag_index));
 }
 
-// test value of flag 0..3
+// set flag 0..3
 bool config_get_flag(uint32_t config, uint8_t flag_index)
 {
-	return (bool)(config & flag_mask[flag_index]);
+	// TODO: add flag index boundaries checking
+	return (config & (1u << (CONFIG_FLAGS_SHIFT + flag_index))) != 0;
 }
 
 int main()
@@ -118,6 +97,16 @@ int main()
 	printf("flag 1 = %d\n", config_get_flag(sample_cfg, 1));
 	printf("flag 2 = %d\n", config_get_flag(sample_cfg, 2));
 	printf("flag 3 = %d\n", config_get_flag(sample_cfg, 3));
+
+	uint32_t cfg = sample_cfg;
+
+	cfg = config_set_flag(cfg, 1);
+
+	printf("after setting flag 1: 0x%08X\n", cfg);
+
+	cfg = config_clear_flag(cfg, 3);
+
+	printf("after clearing flag 3: 0x%08X\n", cfg);
 
 	return 0;
 }
