@@ -37,7 +37,7 @@ void test3()
 	printf("-- test3 --\n");
 
 	printf("val before = %d\n", *p);
-	val++;
+	(*p)++;
 	printf("val after = %d\n", *p);
 
 //	p++;	// gives compilation error
@@ -52,7 +52,7 @@ void test4()
 
 	printf("val before = %d\n", *p);
 //	p++;	// gives compilation error
-	val++;
+	val++;	// it's legal, as according to the declaration only access path is const
 	printf("val after = %d\n", *p);
 
 	const int val2 = 3;
@@ -70,9 +70,9 @@ void process1(const uint8_t* data, size_t len)
 
 //	*data = 5;	// gives compilation error
 
-	for (int i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 	{
-		printf("data[%d] = %d\n", i, *data);
+		printf("data[%zu] = %d\n", i, *data);
 		data++;
 	}
 }
@@ -81,7 +81,7 @@ void process1(const uint8_t* data, size_t len)
 void process2(uint8_t* const data, size_t len)
 {
 //	data++;	// gives compilation error
-	for (int i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 	{
 		data[i] += 10;
 	}
@@ -92,12 +92,24 @@ void process3(const uint8_t* const data, size_t len)
 {
 	printf("-- process3 --\n");
 
-	for (int i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 	{
-		printf("data[%d] = %d\n", i, data[i]);
+		printf("data[%zu] = %d\n", i, data[i]);
 	}
 }
 
+// bad practice - do not use
+void test_const_cast(void)
+{
+	const int x = 10;
+
+	int* p = (int*)&x;
+
+	*p = 20;	// undefined behavior
+
+	printf("-- test_const_cast --\n");
+	printf("%d\n", x);
+}
 
 int main()
 {
@@ -111,19 +123,21 @@ int main()
 
 	uint8_t vals2[] = { 12, 22, 56 };
 
-	for (int i = 0; i < sizeof(vals2); i++)
+	for (size_t i = 0; i < sizeof(vals2); i++)
 	{
-		printf("vals2[%d] before = %d\n", i, vals2[i]);
+		printf("vals2[%zu] before = %d\n", i, vals2[i]);
 	}
 
 	process2(vals2, sizeof(vals2));
 
-	for (int i = 0; i < sizeof(vals2); i++)
+	for (size_t i = 0; i < sizeof(vals2); i++)
 	{
-		printf("vals2[%d] after = %d\n", i, vals2[i]);
+		printf("vals2[%zu] after = %d\n", i, vals2[i]);
 	}
 
 	process3(vals1, sizeof(vals1));
+
+	test_const_cast();
 
 	return 0;
 }
