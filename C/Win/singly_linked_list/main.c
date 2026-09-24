@@ -148,25 +148,19 @@ Node* list_find(Node* head, int value)
     return NULL;
 }
 
-// recursive function
-void node_print(const Node* node)
-{
-    if (node != NULL)
-    {
-        printf("Node = 0x%" PRIxPTR ", value = %d, next = 0x%" PRIxPTR "\n", (uintptr_t)node, node->value, (uintptr_t)(node->next));
-        node_print(node->next);
-    }
-}
-
 void list_print(const Node* head)
 {
     if (head == NULL)
     {
         puts("The list is empty");
     }
-    else
+
+    Node** current = &head;
+
+    while (*current != NULL)
     {
-        node_print(head);
+        printf("Node = 0x%" PRIxPTR ", value = %d, next = 0x%" PRIxPTR "\n", (uintptr_t)(*current), (*current)->value, (uintptr_t)((*current)->next));
+        current = &(*current)->next;
     }
 }
 
