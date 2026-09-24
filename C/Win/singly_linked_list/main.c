@@ -23,7 +23,7 @@ bool list_push_front(Node** head, int value)
     return true;
 }
 
-// reports the popped value
+// in addition it reports the popped value
 bool list_pop_front(Node** head, int* value)
 {
     if (head == NULL || *head == NULL || value == NULL)
@@ -37,6 +37,7 @@ bool list_pop_front(Node** head, int* value)
     return true;
 }
 
+// at least one node shall exist
 bool list_push_back(Node** head, int value)
 {
     if (head == NULL || *head == NULL)
@@ -63,17 +64,96 @@ bool list_push_back(Node** head, int value)
     return true;
 }
 
-bool list_remove(Node** head, int value);
-bool list_insert_after(Node* node, int value);
-void list_reverse(Node** head);
-void list_free(Node** head);
-Node* list_find(Node* head, int value);
+// remove the node that contains the specified value
+bool list_remove(Node** head, int value)
+{
+    Node** current = head;
 
+    while (*current != NULL)
+    {
+        if ((*current)->value == value)
+        {
+            Node* tmp = *current;
+
+            *current = tmp->next;
+            free(tmp);
+
+            return true;
+        }
+
+        current = &(*current)->next;
+    }
+
+    return false;
+}
+
+// insert a new node with specified value
+bool list_insert_after(Node* node, int value)
+{
+    Node* new_node = malloc(sizeof(*new_node));
+
+    if (new_node == NULL)
+        return false;
+
+    new_node->value = value;
+    new_node->next = node->next;
+    node->next = new_node;
+
+    return true;
+}
+
+void list_reverse(Node** head)
+{
+    Node* previous = NULL;
+    Node* current = *head;
+    Node* next;
+
+    while (current != NULL)
+    {
+        next = current->next;
+        current->next = previous;
+        previous = current;
+        current = next;
+    }
+
+    *head = previous;
+}
+
+void list_free(Node** head)
+{
+    Node** current = head;
+
+    while (*current != NULL)
+    {
+        Node* tmp = *current;
+
+        *current = tmp->next;
+        free(tmp);
+    }
+}
+
+Node* list_find(Node* head, int value)
+{
+    Node** current = &head;
+
+    while (*current != NULL)
+    {
+        if ((*current)->value == value)
+        {
+            return *current;
+        }
+        current = &(*current)->next;
+    }
+
+    return NULL;
+}
+
+// recursive function
 void node_print(const Node* node)
 {
     if (node != NULL)
     {
-        printf("Node = 0x%" PRIxPTR ", value = %d\n", (uintptr_t)node, node->value);
+        printf("Node = 0x%" PRIxPTR ", value = %d, next = 0x%" PRIxPTR "\n", (uintptr_t)node, node->value, (uintptr_t)(node->next));
         node_print(node->next);
     }
 }
@@ -120,9 +200,69 @@ int main()
 
     // now add a node and try again
     result = list_push_front(&head, 11);
-    printf("pop_front result = %d\n", result);
+    printf("list_push_front result = %d\n", result);
     result = list_push_back(&head, 5);
     printf("list_push_back result = %d\n", result);
+    list_print(head);
+
+    // try removing non-existent value
+    result = list_remove(&head, 111);
+    printf("list_remove result = %d\n", result);
+
+    // now remove real one
+    result = list_remove(&head, 5);
+    printf("list_remove result = %d\n", result);
+    list_print(head);
+
+    // add it back
+    result = list_push_back(&head, 5);
+    printf("list_push_back result = %d\n", result);
+    list_print(head);
+
+    // search for it
+    Node* pNode = list_find(head, 5);
+    if (pNode)
+    {
+        printf("Found node = 0x%" PRIxPTR ", value = %d\n", (uintptr_t)pNode, pNode->value);
+    }
+    else
+    {
+        puts("Node not found");
+    }
+
+    // test free list
+    puts("Call list_free");
+    list_free(&head);
+    list_print(head);
+
+    // fill the list
+    result = list_push_front(&head, 1);
+    printf("list_push_front result = %d\n", result);
+    result = list_push_back(&head, 2);
+    printf("list_push_back result = %d\n", result);
+    result = list_push_back(&head, 3);
+    printf("list_push_back result = %d\n", result);
+    list_print(head);
+
+    // get pointer to the node
+    pNode = list_find(head, 2);
+    if (pNode)
+    {
+        printf("Found node = 0x%" PRIxPTR ", value = %d\n", (uintptr_t)pNode, pNode->value);
+    }
+    else
+    {
+        puts("Node not found");
+    }
+
+    // call insert after
+    result = list_insert_after(pNode, 4);
+    printf("list_insert_after result = %d\n", result);
+    list_print(head);
+
+    // call list reverse
+    puts("Reversing a list");
+    result = list_reverse(&head);
     list_print(head);
 
     return 0;
