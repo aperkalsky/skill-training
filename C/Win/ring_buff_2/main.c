@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <string.h> // for memset
 
 typedef struct {
     uint8_t* buffer;
@@ -17,6 +16,27 @@ static uint8_t ring_buf[RB_SIZE];
 
 static RingBuffer rb_desc;
 
+void rb_print(const RingBuffer* rb)
+{
+    if (rb == NULL)
+    {
+        return;
+    }
+
+    printf("Capacity = %zu\n", rb->capacity);
+    printf("Count = %zu\n", rb->count);
+    printf("Head = %zu\n", rb->head);
+    printf("Tail = %zu\n", rb->tail);
+
+    puts("Data:");
+
+    for (size_t i = 0; i < rb->capacity; i++)
+    {
+        printf("%zu:0x%02X ", i, rb->buffer[i]);
+    }
+    puts(" ");
+}
+
 bool rb_init(RingBuffer* rb, uint8_t* storage, size_t size)
 {
     if (rb == NULL || storage == NULL || size == 0)
@@ -27,8 +47,6 @@ bool rb_init(RingBuffer* rb, uint8_t* storage, size_t size)
     rb->buffer = storage;
     rb->capacity = size;
     rb->head = rb->tail = rb->count = 0;
-
-    memset(rb->buffer, 0, rb->capacity);
 
     return true;
 }
@@ -113,7 +131,30 @@ int main()
     bool status;
 
     status = rb_init(&rb_desc, ring_buf, RB_SIZE);
-
     printf("Init status = %d\n", status);
+
+    rb_print(&rb_desc);
+
+    // test filling buffer
+    for (int i = 0; i < RB_SIZE + 3; i++)
+    {
+        status = rb_put(&rb_desc, (uint8_t)i);
+        printf("Element %d adding status = %d\n", i, status);
+    }
+
+    rb_print(&rb_desc);
+
+    // test reading buffer
+    uint8_t tmp;
+
+    status = rb_get(&rb_desc, &tmp);
+    printf("Get status = %d, data = %d\n", status, tmp);
+    rb_print(&rb_desc);
+
+    // now put another one
+    status = rb_put(&rb_desc, (uint8_t)0xAA);
+    printf("Element adding status = %d\n", status);
+    rb_print(&rb_desc);
+
     return 0;
 }
