@@ -8,7 +8,7 @@ typedef struct {
     size_t block_size;
     size_t block_count;
 
-    bool* free_blocks;
+    bool* block_free;
     size_t free_count;
 } MemoryPool;
 
@@ -16,7 +16,7 @@ static bool get_free_block_index(MemoryPool* pool, size_t* pindex)
 {
     for (size_t i = 0; i < pool->block_count; i++)
     {
-        if (pool->free_blocks[i])
+        if (pool->block_free[i])
         {
             *pindex = i;
             printf("get_free_block_index returns %zu\n", i);
@@ -34,6 +34,12 @@ bool pool_init(MemoryPool* pool, size_t block_size, size_t block_count)
         return false;
     }
 
+    // check for oversize
+    if (block_count > SIZE_MAX / block_size)
+    {
+        return false;
+    }
+
     // allocate blocks
     pool->memory = malloc(block_size * block_count);
 
@@ -43,9 +49,9 @@ bool pool_init(MemoryPool* pool, size_t block_size, size_t block_count)
     }
 
     // allocate block management
-    pool->free_blocks = malloc(sizeof(bool*) * block_count);
+    pool->block_free = malloc(sizeof(bool) * block_count);
 
-    if (pool->free_blocks == NULL)
+    if (pool->block_free == NULL)
     {
         free(pool->memory);
         return false;
@@ -54,7 +60,7 @@ bool pool_init(MemoryPool* pool, size_t block_size, size_t block_count)
     // init block management
     for (size_t i = 0; i < block_count; i++)
     {
-        pool->free_blocks[i] = true;
+        pool->block_free[i] = true;
     }
 
     // finalize filling struct
@@ -68,23 +74,21 @@ bool pool_init(MemoryPool* pool, size_t block_size, size_t block_count)
 
 void* pool_alloc(MemoryPool* pool)
 {
-    if (pool->free_count == 0)
+    if (pool == NULL || pool->free_count == 0)
     {
         return NULL;
     }
 
     size_t block_index;
     
-    if (get_free_block_index(pool, &block_index))
-    {
-        pool->free_blocks[block_index] = false;
-        pool->free_count--;
-        return (void*)((uintptr_t)pool->memory + pool->block_size * block_index);
-    }
-    else
+    if (!get_free_block_index(pool, &block_index))
     {
         return NULL;
     }
+
+    pool->block_free[block_index] = false;
+    pool->free_count--;
+    return (void*)((uintptr_t)pool->memory + pool->block_size * block_index);
 }
 
 bool pool_free(MemoryPool* pool, void* ptr)
@@ -95,46 +99,51 @@ bool pool_free(MemoryPool* pool, void* ptr)
     }
 
     // check that the pointer is in the valid range
-    if (ptr >= pool->memory && ptr <= (void*)((uintptr_t)pool->memory + pool->block_size * (pool->block_count - 1)))
+    uintptr_t start = (uintptr_t)pool->memory;
+    uintptr_t address = (uintptr_t)ptr;
+    uintptr_t end = start + pool->block_size * pool->block_count;
+
+    if (address < start || address >= end)
     {
-        // calculate and validate block index
-        uintptr_t offset_within_buf = (uintptr_t)ptr - (uintptr_t)pool->memory;
-
-        if (offset_within_buf % pool->block_size == 0)
-        {
-            size_t buffer_index = (size_t)(offset_within_buf / pool->block_size);
-
-            // check of it was already freed
-            if (pool->free_blocks[buffer_index])
-            {
-                return false;
-            }
-            else
-            {
-                pool->free_blocks[buffer_index] = true;
-                pool->free_count++;
-                return true;
-            }
-        }
+        return false;
     }
 
-    return false;
+    // calculate and validate block index
+    uintptr_t offset_within_buf = address - start;
+ 
+    if (offset_within_buf % pool->block_size != 0)
+    {
+        return false;
+    }
+
+    size_t buffer_index = (size_t)(offset_within_buf / pool->block_size);
+
+    // check of it was already freed
+    if (pool->block_free[buffer_index])
+    {
+        return false;
+    }
+    else
+    {
+        pool->block_free[buffer_index] = true;
+        pool->free_count++;
+        return true;
+    }
 }
 
 void pool_destroy(MemoryPool* pool)
 {
-    if (pool != NULL)
-    {
-        if (pool->memory != NULL)
-        {
-            free(pool->memory);
-        }
+    if (pool == NULL)
+        return;
 
-        if (pool->free_blocks != NULL)
-        {
-            free(pool->free_blocks);
-        }
-    }
+    free(pool->memory);
+    free(pool->block_free);
+
+    pool->memory = NULL;
+    pool->block_free = NULL;
+    pool->block_size = 0;
+    pool->block_count = 0;
+    pool->free_count = 0;
 }
 
 int main()
