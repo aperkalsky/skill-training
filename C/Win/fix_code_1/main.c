@@ -16,21 +16,23 @@ Buffer* create_buffer(size_t size)
         return NULL;
     }
 
-//    Buffer* b = malloc(sizeof(b)); // sizeof of pointer was passed
-    Buffer* b = malloc(sizeof(Buffer));
+    Buffer* b = malloc(sizeof(*b));
 
-    if (!b)
+    if (b == NULL)
+    {
         return NULL;
+    }
 
     b->data = malloc(size);
 
-    if (!b->data)
+    if (b->data == NULL)
     {
         free(b);    // need to free prevoiusly allocated memory
         return NULL;
     }
 
     b->size = size;
+
     return b;
 }
 
@@ -42,7 +44,7 @@ bool fill_buffer(const Buffer* b, uint8_t value)
         return false;
     }
 
-    memset((void*)b->data, value, b->size);
+    memset(b->data, value, b->size);
 
     return true;
 }
@@ -50,13 +52,12 @@ bool fill_buffer(const Buffer* b, uint8_t value)
 bool resize_buffer(Buffer* b, size_t new_size)
 {
     // add arguments check
-    if (b == NULL)
+    if (b == NULL || new_size == 0)
     {
-        // TODO: add error notification
         return false;
     }
 
-    void* tmp = realloc((void*)b->data, new_size);
+    void* tmp = realloc(b->data, new_size);
 
     if (tmp == NULL)
     {
@@ -66,20 +67,18 @@ bool resize_buffer(Buffer* b, size_t new_size)
     b->data = tmp;
     b->size = new_size;
 
-    return 0;
+    return true;
 }
 
-bool destroy_buffer(Buffer* b)
+void destroy_buffer(Buffer* b)
 {
     if (b == NULL)
     {
-        return false;
+        return;
     }
 
     free(b->data);
     free(b);
-
-    return true;
 }
 
 int main(void)
@@ -92,9 +91,17 @@ int main(void)
         return -1;
     }
 
-    fill_buffer(b, 0xAA);
+    if (!fill_buffer(b, 0xAA))
+    {
+        destroy_buffer(b);
+        return -1;
+    }
 
-    resize_buffer(b, 1000);
+    if (!resize_buffer(b, 1000))
+    {
+        destroy_buffer(b);
+        return -1;
+    }
 
     uint8_t* p = b->data + 90;
 
@@ -103,4 +110,6 @@ int main(void)
     printf("%02X\n", b->data[0]);
 
     destroy_buffer(b);
+
+    b = NULL;
 }
