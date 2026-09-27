@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 typedef struct {
     uint8_t* data;
@@ -10,7 +11,13 @@ typedef struct {
 
 Buffer* create_buffer(size_t size)
 {
-    Buffer* b = malloc(sizeof(b));
+    if (size == 0)
+    {
+        return NULL;
+    }
+
+//    Buffer* b = malloc(sizeof(b)); // sizeof of pointer was passed
+    Buffer* b = malloc(sizeof(Buffer));
 
     if (!b)
         return NULL;
@@ -18,42 +25,82 @@ Buffer* create_buffer(size_t size)
     b->data = malloc(size);
 
     if (!b->data)
+    {
+        free(b);    // need to free prevoiusly allocated memory
         return NULL;
+    }
 
     b->size = size;
     return b;
 }
 
-void fill_buffer(const Buffer* b, uint8_t value)
+bool fill_buffer(const Buffer* b, uint8_t value)
 {
-    memset(b->data, value, b->size);
+    // add arguments check
+    if (b == NULL)
+    {
+        return false;
+    }
+
+    memset((void*)b->data, value, b->size);
+
+    return true;
 }
 
-void resize_buffer(Buffer* b, size_t new_size)
+bool resize_buffer(Buffer* b, size_t new_size)
 {
-    b->data = realloc(b->data, new_size);
+    // add arguments check
+    if (b == NULL)
+    {
+        // TODO: add error notification
+        return false;
+    }
+
+    void* tmp = realloc((void*)b->data, new_size);
+
+    if (tmp == NULL)
+    {
+        return false;
+    }
+
+    b->data = tmp;
     b->size = new_size;
+
+    return 0;
 }
 
-void destroy_buffer(Buffer* b)
+bool destroy_buffer(Buffer* b)
 {
+    if (b == NULL)
+    {
+        return false;
+    }
+
     free(b->data);
     free(b);
+
+    return true;
 }
 
 int main(void)
 {
     Buffer* b = create_buffer(100);
 
-    fill_buffer(b, 0xAA);
+    if (b == NULL)
+    {
+        puts("Failed to create buffer");
+        return -1;
+    }
 
-    uint8_t* p = b->data + 90;
+    fill_buffer(b, 0xAA);
 
     resize_buffer(b, 1000);
 
+    uint8_t* p = b->data + 90;
+
     printf("%02X\n", *p);
 
-    destroy_buffer(b);
-
     printf("%02X\n", b->data[0]);
+
+    destroy_buffer(b);
 }
