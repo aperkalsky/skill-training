@@ -3,11 +3,13 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+#pragma pack(4)
 typedef struct MemoryBlockHeader
 {
-    void* next;
-    uint32_t free;
-}MemoryBlockHeader;
+    struct MemoryBlockHeader* next;
+    bool free;
+} MemoryBlockHeader;
+#pragma
 
 typedef struct MemoryPool
 {
@@ -32,15 +34,15 @@ bool pool_init(MemoryPool* pool, size_t block_size, size_t block_count)
         return false;
     }
 
-    pool->global_block_size = block_size + sizeof(MemoryBlockHeader);
+    size_t global_block_size = block_size + sizeof(MemoryBlockHeader);
 
-    if (block_count > SIZE_MAX / pool->global_block_size)
+    if (block_count > SIZE_MAX / global_block_size)
     {
         return false;
     }
 
     // memory allocation
-    size_t pool_size = pool->global_block_size * block_count;
+    size_t pool_size = global_block_size * block_count;
 
     void* pmem = malloc(pool_size);
 
@@ -55,7 +57,7 @@ bool pool_init(MemoryPool* pool, size_t block_size, size_t block_count)
 
     for (size_t i = block_count; i > 0; i--)
     {
-        p_curr_header = (MemoryBlockHeader*)((uintptr_t)pmem + pool->global_block_size * (i - 1));
+        p_curr_header = (MemoryBlockHeader*)((uintptr_t)pmem + global_block_size * (i - 1));
         p_curr_header->free = true;
         p_curr_header->next = (void*)p_prev_header;
         p_prev_header = p_curr_header;
@@ -65,6 +67,7 @@ bool pool_init(MemoryPool* pool, size_t block_size, size_t block_count)
     pool->memory = pmem;
     pool->free_list = (MemoryBlockHeader*)pmem;
     pool->block_size = block_size;
+    pool->global_block_size = global_block_size;
     pool->block_count = block_count;
 
     return true;
@@ -103,9 +106,9 @@ bool pool_free(MemoryPool* pool, void* ptr)
     // check that the pointer is in the valid range
     uintptr_t block_start_addr = (uintptr_t)ptr - sizeof(MemoryBlockHeader);
     uintptr_t pool_start_addr = (uintptr_t)pool->memory;
-    uintptr_t last_block_end_addr = pool_start_addr + (pool->block_size + sizeof(MemoryBlockHeader)) * (pool->block_count -1);
+    uintptr_t start_addr_of_last_block = pool_start_addr + (pool->block_size + sizeof(MemoryBlockHeader)) * (pool->block_count -1);
 
-    if (block_start_addr < pool_start_addr || block_start_addr > last_block_end_addr)
+    if (block_start_addr < pool_start_addr || block_start_addr > start_addr_of_last_block)
     {
         return false;
     }
@@ -119,7 +122,7 @@ bool pool_free(MemoryPool* pool, void* ptr)
     }
 
     // check if this buffer is already free
-    MemoryBlockHeader* pheader = block_start_addr;
+    MemoryBlockHeader* pheader = (MemoryBlockHeader*)block_start_addr;
 
     if (pheader->free)
     {
@@ -204,7 +207,7 @@ int main()
     for (size_t i = 0; i < NUM_BLOCK_ADDR_TO_KEEP; i++)
     {
         result = pool_free(&pool, blocks[i]);
-        printf("Result of freeing of valid pointer %zu (0x%"PRIxPTR")= %d\n", i, blocks[i], result);
+        printf("Result of freeing of valid pointer %zu (0x%"PRIxPTR")= %d\n", i, (uintptr_t)blocks[i], result);
     }
 
     pool_destroy(&pool);
